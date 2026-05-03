@@ -53,7 +53,9 @@ export default function App() {
       <div style={{ minHeight: '100vh', background: '#F7F5F2' }}>
         <header style={{ background: '#F7F5F2', padding: '16px 20px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 20 }}>🐱</span>
+          <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', border: '1.5px solid #E8F5E9' }}>
+  <img src="/geouli-icon.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+</div>
             <span style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', letterSpacing: '-0.3px' }}>겨울이</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

@@ -12,11 +12,12 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col items-center justify-center" style={{ background: '#F7F5F2' }}>
       <div className="flex flex-col items-center gap-8 px-8 w-full max-w-sm">
         <div className="flex flex-col items-center gap-3">
-          <div style={{
-            width: 72, height: 72, borderRadius: 20,
-            background: '#E8F5E9', display: 'flex',
-            alignItems: 'center', justifyContent: 'center', fontSize: 36
-          }}>🐱</div>
+        <div style={{
+  width: 140, height: 140, borderRadius: 32,
+  overflow: 'hidden', border: '2px solid #E8F5E9'
+}}>
+  <img src="/geouli-main.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+</div>
           <div className="flex flex-col items-center gap-1">
             <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1C1C1E', letterSpacing: '-0.5px' }}>겨울이 건강 수첩</h1>
             <p style={{ fontSize: 14, color: '#8E8E93' }}>가족 모두 함께 기록해요</p>
