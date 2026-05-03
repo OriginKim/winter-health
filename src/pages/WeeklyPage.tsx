@@ -3,27 +3,35 @@ import { supabase } from '../lib/supabase'
 import type { HealthRecord } from '../types'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
 
+interface RecordWithName extends HealthRecord { recorderName?: string }
+
 export default function WeeklyPage() {
-  const [records, setRecords] = useState<HealthRecord[]>([])
+  const [records, setRecords] = useState<RecordWithName[]>([])
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchData = async () => {
       const from = new Date()
       from.setDate(from.getDate() - 6)
       const { data } = await supabase
         .from('health_records').select('*')
         .gte('date', from.toISOString().slice(0, 10))
         .order('date', { ascending: true })
-      setRecords(data ?? [])
+      if (!data) return
+
+      const profileIds = [...new Set(data.map((r) => r.recorded_by).filter(Boolean))]
+      const { data: profiles } = await supabase.from('profiles').select('id, name').in('id', profileIds)
+      const profileMap = Object.fromEntries((profiles ?? []).map((p) => [p.id, p.name]))
+
+      setRecords(data.map((r) => ({ ...r, recorderName: profileMap[r.recorded_by ?? ''] ?? '' })))
     }
-    fetch()
+    fetchData()
   }, [])
 
   const calcWater = (r: HealthRecord) => {
-    const mw = (r.morning_water_given ?? 0) - (r.morning_water_left ?? 0)
-    const ew = (r.evening_water_given ?? 0) - (r.evening_water_left ?? 0)
-    const pw = (r.purifier_water_given ?? 0) - (r.purifier_water_left ?? 0)
-    return Math.max(0, mw + ew + pw)
+    const mw = Math.max(0, (r.morning_water_given ?? 0) - (r.morning_water_left ?? 0))
+    const ew = Math.max(0, (r.evening_water_given ?? 0) - (r.evening_water_left ?? 0))
+    const pw = Math.max(0, (r.purifier_water_given ?? 0) - (r.purifier_water_left ?? 0))
+    return mw + ew + pw
   }
 
   const chartData = records.map((r) => ({
@@ -39,19 +47,16 @@ export default function WeeklyPage() {
     return (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1)
   }
 
-  const summaryCards = [
-    { label: '평균 몸무게', value: avg('몸무게'), unit: 'kg', color: '#1565C0' },
-    { label: '평균 식사량', value: avg('식사량'), unit: 'g', color: '#1C1C1E' },
-    { label: '평균 음수량', value: avg('음수량'), unit: 'ml', color: '#2E7D32' },
-  ]
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <p style={{ fontSize: 13, color: '#8E8E93' }}>최근 7일 기준</p>
 
-      {/* 요약 카드 */}
       <div style={{ display: 'flex', gap: 8 }}>
-        {summaryCards.map(({ label, value, unit, color }) => (
+        {[
+          { label: '평균 몸무게', value: avg('몸무게'), unit: 'kg', color: '#1565C0' },
+          { label: '평균 식사량', value: avg('식사량'), unit: 'g', color: '#1C1C1E' },
+          { label: '평균 음수량', value: avg('음수량'), unit: 'ml', color: '#2E7D32' },
+        ].map(({ label, value, unit, color }) => (
           <div key={label} style={{ flex: 1, background: '#fff', borderRadius: 14, border: '1px solid #F2F2F7', padding: '12px 10px' }}>
             <p style={{ fontSize: 10, color: '#8E8E93', fontWeight: 600, marginBottom: 4 }}>{label}</p>
             <p style={{ fontSize: 20, fontWeight: 700, color, letterSpacing: '-0.5px' }}>{value}</p>
@@ -60,7 +65,6 @@ export default function WeeklyPage() {
         ))}
       </div>
 
-      {/* 몸무게 그래프 */}
       <div style={{ background: '#fff', borderRadius: 18, border: '1px solid #F2F2F7', padding: '16px' }}>
         <p style={{ fontSize: 12, fontWeight: 600, color: '#8E8E93', marginBottom: 12 }}>몸무게 추이 (kg)</p>
         <ResponsiveContainer width="100%" height={160}>
@@ -74,7 +78,6 @@ export default function WeeklyPage() {
         </ResponsiveContainer>
       </div>
 
-      {/* 식사량/음수량 그래프 */}
       <div style={{ background: '#fff', borderRadius: 18, border: '1px solid #F2F2F7', padding: '16px' }}>
         <p style={{ fontSize: 12, fontWeight: 600, color: '#8E8E93', marginBottom: 12 }}>식사량 / 음수량</p>
         <ResponsiveContainer width="100%" height={160}>
@@ -89,7 +92,6 @@ export default function WeeklyPage() {
         </ResponsiveContainer>
       </div>
 
-      {/* 날짜별 카드 */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <p style={{ fontSize: 12, fontWeight: 600, color: '#8E8E93' }}>날짜별 기록</p>
         {records.length === 0 && (
@@ -102,26 +104,14 @@ export default function WeeklyPage() {
           const label = d.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })
           return (
             <div key={r.date} style={{ background: '#fff', borderRadius: 14, border: '1px solid #F2F2F7', padding: '14px 16px' }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: '#1C1C1E', marginBottom: 8 }}>{label}</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: '#1C1C1E' }}>{label}</p>
+                {r.recorderName && <span style={{ fontSize: 11, color: '#8E8E93', background: '#F7F5F2', padding: '2px 8px', borderRadius: 20 }}>{r.recorderName}</span>}
+              </div>
               <div style={{ display: 'flex', gap: 16 }}>
-                {r.weight && (
-                  <div>
-                    <p style={{ fontSize: 10, color: '#8E8E93' }}>몸무게</p>
-                    <p style={{ fontSize: 15, fontWeight: 600, color: '#1565C0' }}>{r.weight} kg</p>
-                  </div>
-                )}
-                {food > 0 && (
-                  <div>
-                    <p style={{ fontSize: 10, color: '#8E8E93' }}>식사량</p>
-                    <p style={{ fontSize: 15, fontWeight: 600, color: '#1C1C1E' }}>{food} g</p>
-                  </div>
-                )}
-                {water > 0 && (
-                  <div>
-                    <p style={{ fontSize: 10, color: '#8E8E93' }}>음수량</p>
-                    <p style={{ fontSize: 15, fontWeight: 600, color: '#2E7D32' }}>{water} ml</p>
-                  </div>
-                )}
+                {r.weight && <div><p style={{ fontSize: 10, color: '#8E8E93' }}>몸무게</p><p style={{ fontSize: 15, fontWeight: 600, color: '#1565C0' }}>{r.weight} kg</p></div>}
+                {food > 0 && <div><p style={{ fontSize: 10, color: '#8E8E93' }}>식사량</p><p style={{ fontSize: 15, fontWeight: 600, color: '#1C1C1E' }}>{food} g</p></div>}
+                {water > 0 && <div><p style={{ fontSize: 10, color: '#8E8E93' }}>음수량</p><p style={{ fontSize: 15, fontWeight: 600, color: '#2E7D32' }}>{water} ml</p></div>}
               </div>
               {r.memo && <p style={{ fontSize: 12, color: '#8E8E93', marginTop: 8, paddingTop: 8, borderTop: '1px solid #F2F2F7' }}>{r.memo}</p>}
             </div>

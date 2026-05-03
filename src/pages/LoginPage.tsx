@@ -39,7 +39,7 @@ export default function LoginPage() {
         </button>
 
         <p style={{ fontSize: 12, color: '#AEAEB2', textAlign: 'center', lineHeight: 1.6 }}>
-          가족만 접근할 수 있는 비공개 서비스예요
+          비공개 서비스입니다.
         </p>
       </div>
     </div>

@@ -9,7 +9,7 @@ export default function MonthlyPage() {
   const [selected, setSelected] = useState<HealthRecord | null>(null)
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchData = async () => {
       const { data } = await supabase
         .from('health_records').select('*')
         .gte('date', `${month}-01`)
@@ -18,18 +18,17 @@ export default function MonthlyPage() {
       setRecords(data ?? [])
       setSelected(null)
     }
-    fetch()
+    fetchData()
   }, [month])
 
   const calcWater = (r: HealthRecord) => {
-    const mw = (r.morning_water_given ?? 0) - (r.morning_water_left ?? 0)
-    const ew = (r.evening_water_given ?? 0) - (r.evening_water_left ?? 0)
-    const pw = (r.purifier_water_given ?? 0) - (r.purifier_water_left ?? 0)
-    return Math.max(0, mw + ew + pw)
+    const mw = Math.max(0, (r.morning_water_given ?? 0) - (r.morning_water_left ?? 0))
+    const ew = Math.max(0, (r.evening_water_given ?? 0) - (r.evening_water_left ?? 0))
+    const pw = Math.max(0, (r.purifier_water_given ?? 0) - (r.purifier_water_left ?? 0))
+    return mw + ew + pw
   }
 
   const recordMap = Object.fromEntries(records.map((r) => [r.date, r]))
-
   const [year, mon] = month.split('-').map(Number)
   const daysInMonth = new Date(year, mon, 0).getDate()
   const firstDay = new Date(year, mon - 1, 1).getDay()
@@ -50,18 +49,14 @@ export default function MonthlyPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* 월 선택 */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <p style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', letterSpacing: '-0.5px' }}>
-          {year}년 {mon}월
-        </p>
+        <p style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', letterSpacing: '-0.5px' }}>{year}년 {mon}월</p>
         <input
           type="month" value={month} onChange={(e) => setMonth(e.target.value)}
           style={{ border: '1px solid #E5E5EA', borderRadius: 10, padding: '6px 10px', fontSize: 13, color: '#1C1C1E', background: '#fff', fontFamily: 'Pretendard, sans-serif', outline: 'none' }}
         />
       </div>
 
-      {/* 요약 카드 */}
       <div style={{ display: 'flex', gap: 8 }}>
         {[
           { label: '평균 몸무게', value: avg((r) => r.weight), unit: 'kg', color: '#1565C0' },
@@ -76,7 +71,6 @@ export default function MonthlyPage() {
         ))}
       </div>
 
-      {/* 달력 */}
       <div style={{ background: '#fff', borderRadius: 18, border: '1px solid #F2F2F7', padding: '16px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 8 }}>
           {dayLabels.map((d) => (
@@ -95,11 +89,7 @@ export default function MonthlyPage() {
               <div
                 key={day}
                 onClick={() => setSelected(rec ? (isSelected ? null : rec) : null)}
-                style={{
-                  textAlign: 'center', padding: '6px 2px', borderRadius: 10, cursor: rec ? 'pointer' : 'default',
-                  background: isSelected ? '#2E7D32' : isToday ? '#E8F5E9' : 'transparent',
-                  transition: 'background 0.15s'
-                }}
+                style={{ textAlign: 'center', padding: '6px 2px', borderRadius: 10, cursor: rec ? 'pointer' : 'default', background: isSelected ? '#2E7D32' : isToday ? '#E8F5E9' : 'transparent', transition: 'background 0.15s' }}
               >
                 <p style={{ fontSize: 13, fontWeight: isToday ? 700 : 400, color: isSelected ? '#fff' : isToday ? '#2E7D32' : '#1C1C1E' }}>{day}</p>
                 <div style={{ height: 5, display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: 2 }}>
@@ -111,7 +101,6 @@ export default function MonthlyPage() {
         </div>
       </div>
 
-      {/* 선택된 날 상세 */}
       {selected && (
         <div style={{ background: '#fff', borderRadius: 18, border: '1px solid #F2F2F7', padding: '16px' }}>
           <p style={{ fontSize: 14, fontWeight: 700, color: '#1C1C1E', marginBottom: 12 }}>
@@ -127,10 +116,11 @@ export default function MonthlyPage() {
             )}
           </div>
           {selected.memo && <p style={{ fontSize: 13, color: '#8E8E93', marginTop: 12, paddingTop: 12, borderTop: '1px solid #F2F2F7' }}>{selected.memo}</p>}
+          <p style={{ fontSize: 11, color: '#AEAEB2', marginTop: 8 }}>아침: 급여 {selected.morning_food ?? '-'}g / 음수 {Math.max(0, (selected.morning_water_given ?? 0) - (selected.morning_water_left ?? 0))}ml</p>
+          <p style={{ fontSize: 11, color: '#AEAEB2' }}>저녁: 급여 {selected.evening_food ?? '-'}g / 음수 {Math.max(0, (selected.evening_water_given ?? 0) - (selected.evening_water_left ?? 0))}ml</p>
         </div>
       )}
 
-      {/* 몸무게 추이 그래프 */}
       {chartData.length > 0 && (
         <div style={{ background: '#fff', borderRadius: 18, border: '1px solid #F2F2F7', padding: '16px' }}>
           <p style={{ fontSize: 12, fontWeight: 600, color: '#8E8E93', marginBottom: 12 }}>이달 몸무게 추이 (kg)</p>
@@ -146,9 +136,7 @@ export default function MonthlyPage() {
         </div>
       )}
 
-      <p style={{ fontSize: 12, color: '#AEAEB2', textAlign: 'center', paddingBottom: 8 }}>
-        이달 기록 {records.length}일
-      </p>
+      <p style={{ fontSize: 12, color: '#AEAEB2', textAlign: 'center', paddingBottom: 8 }}>이달 기록 {records.length}일</p>
     </div>
   )
 }
