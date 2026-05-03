@@ -59,17 +59,18 @@ export default function App() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {userName && (
               <button
-                onClick={async () => {
-                  const newName = prompt('이름을 변경해주세요', userName)
-                  if (newName && newName.trim()) {
-                    await supabase.from('profiles').upsert({ id: session.user.id, name: newName.trim() })
-                    setUserName(newName.trim())
-                  }
-                }}
-                style={{ fontSize: 13, color: '#1C1C1E', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Pretendard, sans-serif', textDecoration: 'underline', textDecorationColor: '#E5E5EA' }}
-              >
-                {userName}
-              </button>
+              onClick={async () => {
+                const newName = prompt('이름을 변경해주세요', userName ?? '')
+                if (newName && newName.trim()) {
+                  await supabase.from('profiles').upsert({ id: session.user.id, name: newName.trim() })
+                  setUserName(newName.trim())
+                }
+              }}
+              style={{ fontSize: 13, color: '#1C1C1E', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Pretendard, sans-serif', display: 'flex', alignItems: 'center', gap: 4 }}
+            >
+              {userName}
+              <span style={{ fontSize: 11, color: '#AEAEB2' }}>✏️</span>
+            </button>
             )}
             <button
               onClick={() => supabase.auth.signOut()}
