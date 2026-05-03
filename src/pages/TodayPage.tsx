@@ -5,7 +5,11 @@ import type { HealthRecord } from '../types'
 
 interface Props { session: Session }
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => {
+  const d = new Date()
+  const offset = d.getTimezoneOffset() * 60000
+  return new Date(d.getTime() - offset).toISOString().slice(0, 10)
+}
 
 type TabType = '아침' | '저녁' | '정수기'
 
