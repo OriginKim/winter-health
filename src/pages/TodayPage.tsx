@@ -196,14 +196,8 @@ export default function TodayPage({ session }: Props) {
   return (
     <div ref={topRef}>
       {/* 날짜 카드 */}
-      <div style={{ marginBottom: 16, position: 'relative' }}>
-      <div
-  onClick={() => {
-    const input = document.querySelector('input[type="date"]') as HTMLInputElement
-    if (input?.showPicker) input.showPicker()
-  }}
-  style={{ background: '#fff', borderRadius: 14, border: '1px solid #F2F2F7', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
->
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #F2F2F7', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <p style={{ fontSize: 11, color: '#8E8E93', fontWeight: 600, marginBottom: 2 }}>
               {isToday ? '오늘' : '날짜'}
@@ -212,18 +206,23 @@ export default function TodayPage({ session }: Props) {
               {dateLabel}
             </p>
           </div>
-          <span style={{ fontSize: 13, color: '#AEAEB2' }}>변경 ›</span>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            style={{
+              border: '1px solid #E5E5EA',
+              borderRadius: 10,
+              padding: '6px 10px',
+              fontSize: 13,
+              color: '#1C1C1E',
+              background: '#fff',
+              fontFamily: 'Pretendard, sans-serif',
+              outline: 'none',
+              cursor: 'pointer',
+            }}
+          />
         </div>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          style={{
-            position: 'absolute', top: 0, left: 0,
-            width: '100%', height: '100%',
-            opacity: 0, cursor: 'pointer',
-          }}
-        />
         {recordedBy && (
           <p style={{ fontSize: 12, color: '#8E8E93', marginTop: 6, paddingLeft: 4 }}>
             최근 입력: <strong style={{ color: '#2E7D32' }}>{recordedBy}</strong>
