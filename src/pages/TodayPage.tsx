@@ -197,7 +197,13 @@ export default function TodayPage({ session }: Props) {
     <div ref={topRef}>
       {/* 날짜 카드 */}
       <div style={{ marginBottom: 16, position: 'relative' }}>
-        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #F2F2F7', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div
+  onClick={() => {
+    const input = document.querySelector('input[type="date"]') as HTMLInputElement
+    if (input?.showPicker) input.showPicker()
+  }}
+  style={{ background: '#fff', borderRadius: 14, border: '1px solid #F2F2F7', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+>
           <div>
             <p style={{ fontSize: 11, color: '#8E8E93', fontWeight: 600, marginBottom: 2 }}>
               {isToday ? '오늘' : '날짜'}
