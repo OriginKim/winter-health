@@ -43,8 +43,8 @@ export default function MonthlyPage() {
   const firstDay = new Date(year, mon - 1, 1).getDay()
   const todayStr = localToday()
 
-  const avg = (fn: (r: HealthRecord) => number | undefined) => {
-    const vals = records.map(fn).filter((v) => v !== undefined && v > 0) as number[]
+  const avg = (fn: (r: HealthRecord) => number | null | undefined) => {
+    const vals = records.map(fn).filter((v) => v !== undefined && v !== null && v > 0) as number[]
     if (!vals.length) return '-'
     return (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1)
   }
