@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import type { HealthRecord } from '../types'
@@ -55,8 +55,13 @@ export default function TodayPage({ session }: Props) {
   })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [error, setError] = useState('')
   const [recordedBy, setRecordedBy] = useState('')
+  const [loading, setLoading] = useState(false)
+  const topRef = useRef<HTMLDivElement>(null)
+  const dateInputRef = useRef<HTMLInputElement>(null)
+
   const [form, setForm] = useState({
     weight: '', morning_food: '', morning_water_given: '', morning_water_left: '',
     evening_food: '', evening_water_given: '', evening_water_left: '',
@@ -67,6 +72,7 @@ export default function TodayPage({ session }: Props) {
 
   useEffect(() => {
     const fetchRecord = async () => {
+      setLoading(true)
       const { data } = await supabase.from('health_records').select('*').eq('date', date).maybeSingle()
       if (data) {
         setForm({
@@ -84,11 +90,14 @@ export default function TodayPage({ session }: Props) {
         if (data.recorded_by) {
           const { data: profile } = await supabase.from('profiles').select('name').eq('id', data.recorded_by).maybeSingle()
           setRecordedBy(profile?.name ?? '')
+        } else {
+          setRecordedBy('')
         }
       } else {
         setForm({ weight: '', morning_food: '', morning_water_given: '', morning_water_left: '', evening_food: '', evening_water_given: '', evening_water_left: '', purifier_water_given: '', purifier_water_left: '', memo: '' })
         setRecordedBy('')
       }
+      setLoading(false)
     }
     fetchRecord()
   }, [date])
@@ -130,22 +139,22 @@ export default function TodayPage({ session }: Props) {
     }
 
     setSaving(true)
-    const existing = await supabase.from('health_records').select('*').eq('date', date).maybeSingle()
-    const prev = existing.data ?? {}
 
-    const payload: HealthRecord = {
+    const toNum = (v: string) => v.trim() !== '' ? parseFloat(v) : null
+
+    const payload = {
       date,
       recorded_by: session.user.id,
-      weight: form.weight ? parseFloat(form.weight) : (prev.weight ?? undefined),
-      morning_food: form.morning_food ? parseFloat(form.morning_food) : (prev.morning_food ?? undefined),
-      morning_water_given: form.morning_water_given ? parseFloat(form.morning_water_given) : (prev.morning_water_given ?? undefined),
-      morning_water_left: form.morning_water_left ? parseFloat(form.morning_water_left) : (prev.morning_water_left ?? undefined),
-      evening_food: form.evening_food ? parseFloat(form.evening_food) : (prev.evening_food ?? undefined),
-      evening_water_given: form.evening_water_given ? parseFloat(form.evening_water_given) : (prev.evening_water_given ?? undefined),
-      evening_water_left: form.evening_water_left ? parseFloat(form.evening_water_left) : (prev.evening_water_left ?? undefined),
-      purifier_water_given: form.purifier_water_given ? parseFloat(form.purifier_water_given) : (prev.purifier_water_given ?? undefined),
-      purifier_water_left: form.purifier_water_left ? parseFloat(form.purifier_water_left) : (prev.purifier_water_left ?? undefined),
-      memo: form.memo || (prev.memo ?? undefined),
+      weight: toNum(form.weight),
+      morning_food: toNum(form.morning_food),
+      morning_water_given: toNum(form.morning_water_given),
+      morning_water_left: toNum(form.morning_water_left),
+      evening_food: toNum(form.evening_food),
+      evening_water_given: toNum(form.evening_water_given),
+      evening_water_left: toNum(form.evening_water_left),
+      purifier_water_given: toNum(form.purifier_water_given),
+      purifier_water_left: toNum(form.purifier_water_left),
+      memo: form.memo.trim() !== '' ? form.memo.trim() : null,
     }
 
     const { error: saveError } = await supabase.from('health_records').upsert(payload, { onConflict: 'date' })
@@ -155,15 +164,16 @@ export default function TodayPage({ session }: Props) {
       return
     }
     setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    topRef.current?.scrollIntoView({ behavior: 'smooth' })
+    setTimeout(() => setSaved(false), 3000)
   }
 
   const handleDelete = async () => {
-    if (!confirm('이 날의 기록을 삭제할까요?')) return
     const { error: delError } = await supabase.from('health_records').delete().eq('date', date)
     if (delError) { setError('삭제 중 오류가 발생했어요.'); return }
     setForm({ weight: '', morning_food: '', morning_water_given: '', morning_water_left: '', evening_food: '', evening_water_given: '', evening_water_left: '', purifier_water_given: '', purifier_water_left: '', memo: '' })
     setRecordedBy('')
+    setDeleteConfirm(false)
   }
 
   const morningWater = calcWater(form.morning_water_given, form.morning_water_left)
@@ -182,125 +192,168 @@ export default function TodayPage({ session }: Props) {
     return false
   }
 
+  const dateLabel = new Date(date + 'T00:00:00').toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })
+  const isToday = date === today()
+
   return (
-    <div>
-      {/* 날짜 + 입력자 */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <input
-            type="date" value={date} onChange={(e) => setDate(e.target.value)}
-            style={{ border: '1px solid #E5E5EA', borderRadius: 10, padding: '8px 12px', fontSize: 14, color: '#1C1C1E', background: '#fff', fontFamily: 'Pretendard, sans-serif', outline: 'none' }}
-          />
+    <div ref={topRef}>
+      {/* 날짜 카드 */}
+      <div style={{ marginBottom: 16 }}>
+        <div
+          onClick={() => dateInputRef.current?.showPicker?.()}
+          style={{ background: '#fff', borderRadius: 14, border: '1px solid #F2F2F7', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+        >
+          <div>
+            <p style={{ fontSize: 11, color: '#8E8E93', fontWeight: 600, marginBottom: 2 }}>
+              {isToday ? '오늘' : '날짜'}
+            </p>
+            <p style={{ fontSize: 20, fontWeight: 700, color: isToday ? '#2E7D32' : '#1C1C1E', letterSpacing: '-0.5px' }}>
+              {dateLabel}
+            </p>
+          </div>
+          <span style={{ fontSize: 13, color: '#AEAEB2' }}>변경 ›</span>
         </div>
+        <input
+          ref={dateInputRef}
+          type="date" value={date}
+          onChange={(e) => setDate(e.target.value)}
+          style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 0, height: 0 }}
+        />
         {recordedBy && (
-          <span style={{ fontSize: 12, color: '#8E8E93' }}>
-            최근: <strong style={{ color: '#2E7D32' }}>{recordedBy}</strong>
-          </span>
+          <p style={{ fontSize: 12, color: '#8E8E93', marginTop: 6, paddingLeft: 4 }}>
+            최근 입력: <strong style={{ color: '#2E7D32' }}>{recordedBy}</strong>
+          </p>
         )}
       </div>
 
-      {/* 요약 카드 */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <SummaryCard label="총 식사량" value={totalFood()} unit="g" color="#1C1C1E" />
-        <SummaryCard label="총 음수량" value={totalWater()} unit="ml" color="#2E7D32" />
-        {form.weight && <SummaryCard label="몸무게" value={form.weight} unit="kg" color="#1565C0" />}
-      </div>
+      {/* 로딩 */}
+      {loading ? (
+        <div style={{ background: '#fff', borderRadius: 18, border: '1px solid #F2F2F7', padding: '32px 0', textAlign: 'center', marginBottom: 12 }}>
+          <p style={{ fontSize: 14, color: '#AEAEB2' }}>불러오는 중...</p>
+        </div>
+      ) : (
+        <>
+          {/* 요약 카드 */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            <SummaryCard label="총 식사량" value={totalFood()} unit="g" color="#1C1C1E" />
+            <SummaryCard label="총 음수량" value={totalWater()} unit="ml" color="#2E7D32" />
+            {form.weight && <SummaryCard label="몸무게" value={form.weight} unit="kg" color="#1565C0" />}
+          </div>
 
-      {/* 몸무게 */}
-      <div style={{ background: '#fff', borderRadius: 18, border: '1px solid #F2F2F7', padding: '4px 16px 4px', marginBottom: 12 }}>
-        <Field label="몸무게" unit="kg" value={form.weight} onChange={set('weight')} />
-      </div>
+          {/* 몸무게 */}
+          <div style={{ background: '#fff', borderRadius: 18, border: '1px solid #F2F2F7', padding: '4px 16px 4px', marginBottom: 12 }}>
+            <Field label="몸무게" unit="kg" value={form.weight} onChange={set('weight')} />
+          </div>
 
-      {/* 탭 */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-        {tabs.map((tab) => (
+          {/* 탭 */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+            {tabs.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                style={{
+                  flex: 1, padding: '10px 0', borderRadius: 12,
+                  border: activeTab === tab ? '1.5px solid #2E7D32' : '1.5px solid #F2F2F7',
+                  background: activeTab === tab ? '#E8F5E9' : '#fff',
+                  fontSize: 14, fontWeight: activeTab === tab ? 700 : 400,
+                  color: activeTab === tab ? '#2E7D32' : '#8E8E93',
+                  cursor: 'pointer', fontFamily: 'Pretendard, sans-serif',
+                  position: 'relative' as const,
+                }}
+              >
+                {tab}
+                {hasData(tab) && (
+                  <span style={{ position: 'absolute', top: 6, right: 8, width: 6, height: 6, borderRadius: '50%', background: '#2E7D32', display: 'inline-block' }} />
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* 탭 컨텐츠 */}
+          <div style={{ background: '#fff', borderRadius: 18, border: '1px solid #F2F2F7', padding: '4px 16px 16px', marginBottom: 12 }}>
+            {activeTab === '아침' && (
+              <>
+                <Field label="급여량" unit="g" value={form.morning_food} onChange={set('morning_food')} />
+                <Field label="준 물" unit="ml" value={form.morning_water_given} onChange={set('morning_water_given')} />
+                <Field label="남은 물" unit="ml" value={form.morning_water_left} onChange={set('morning_water_left')} error={morningErr} />
+                {morningWater && !morningErr && <p style={{ fontSize: 12, color: '#2E7D32', textAlign: 'right', padding: '8px 0 4px' }}>= {morningWater} ml 섭취</p>}
+              </>
+            )}
+            {activeTab === '저녁' && (
+              <>
+                <Field label="급여량" unit="g" value={form.evening_food} onChange={set('evening_food')} />
+                <Field label="준 물" unit="ml" value={form.evening_water_given} onChange={set('evening_water_given')} />
+                <Field label="남은 물" unit="ml" value={form.evening_water_left} onChange={set('evening_water_left')} error={eveningErr} />
+                {eveningWater && !eveningErr && <p style={{ fontSize: 12, color: '#2E7D32', textAlign: 'right', padding: '8px 0 4px' }}>= {eveningWater} ml 섭취</p>}
+              </>
+            )}
+            {activeTab === '정수기' && (
+              <>
+                <Field label="넣은 물" unit="ml" value={form.purifier_water_given} onChange={set('purifier_water_given')} />
+                <Field label="남은 물" unit="ml" value={form.purifier_water_left} onChange={set('purifier_water_left')} error={purifierErr} />
+                {purifierWater && !purifierErr && <p style={{ fontSize: 12, color: '#2E7D32', textAlign: 'right', padding: '8px 0 4px' }}>= {purifierWater} ml 섭취</p>}
+              </>
+            )}
+
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #F2F2F7' }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#8E8E93', marginBottom: 6 }}>메모</p>
+              <textarea
+                value={form.memo} onChange={(e) => setForm((f) => ({ ...f, memo: e.target.value }))}
+                placeholder="특이사항을 입력해 주세요" rows={2}
+                style={{ width: '100%', border: 'none', background: 'none', fontSize: 14, color: '#1C1C1E', fontFamily: 'Pretendard, sans-serif', outline: 'none', resize: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+          </div>
+
+          {error && (
+            <div style={{ marginBottom: 12, padding: '12px 14px', background: '#FFEBEE', borderRadius: 10, border: '1px solid #FFCDD2' }}>
+              <p style={{ fontSize: 13, color: '#C62828' }}>{error}</p>
+            </div>
+          )}
+
+          {/* 저장 성공 배너 */}
+          {saved && (
+            <div style={{ marginBottom: 12, padding: '12px 14px', background: '#E8F5E9', borderRadius: 10, border: '1px solid #A5D6A7', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 16 }}>✓</span>
+              <p style={{ fontSize: 13, color: '#2E7D32', fontWeight: 600 }}>저장됐어요!</p>
+            </div>
+          )}
+
           <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            style={{
-              flex: 1, padding: '10px 0', borderRadius: 12,
-              border: activeTab === tab ? '1.5px solid #2E7D32' : '1.5px solid #F2F2F7',
-              background: activeTab === tab ? '#E8F5E9' : '#fff',
-              fontSize: 14, fontWeight: activeTab === tab ? 700 : 400,
-              color: activeTab === tab ? '#2E7D32' : '#8E8E93',
-              cursor: 'pointer', fontFamily: 'Pretendard, sans-serif',
-              position: 'relative' as const,
-            }}
+            onClick={handleSave} disabled={saving}
+            style={{ width: '100%', padding: '15px 0', background: saving ? '#A5D6A7' : '#2E7D32', color: '#fff', border: 'none', borderRadius: 14, fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'Pretendard, sans-serif', transition: 'background 0.2s' }}
           >
-            {tab}
-            {hasData(tab) && (
-              <span style={{
-                position: 'absolute', top: 6, right: 8,
-                width: 6, height: 6, borderRadius: '50%',
-                background: '#2E7D32', display: 'inline-block'
-              }} />
-            )}
+            {saving ? '저장 중...' : '저장하기'}
           </button>
-        ))}
-      </div>
 
-      {/* 탭 컨텐츠 */}
-      <div style={{ background: '#fff', borderRadius: 18, border: '1px solid #F2F2F7', padding: '4px 16px 16px', marginBottom: 12 }}>
-        {activeTab === '아침' && (
-          <>
-            <Field label="급여량" unit="g" value={form.morning_food} onChange={set('morning_food')} />
-            <Field label="준 물" unit="ml" value={form.morning_water_given} onChange={set('morning_water_given')} />
-            <Field label="남은 물" unit="ml" value={form.morning_water_left} onChange={set('morning_water_left')} error={morningErr} />
-            {morningWater && !morningErr && (
-              <p style={{ fontSize: 12, color: '#2E7D32', textAlign: 'right', padding: '8px 0 4px' }}>= {morningWater} ml 섭취</p>
-            )}
-          </>
-        )}
-        {activeTab === '저녁' && (
-          <>
-            <Field label="급여량" unit="g" value={form.evening_food} onChange={set('evening_food')} />
-            <Field label="준 물" unit="ml" value={form.evening_water_given} onChange={set('evening_water_given')} />
-            <Field label="남은 물" unit="ml" value={form.evening_water_left} onChange={set('evening_water_left')} error={eveningErr} />
-            {eveningWater && !eveningErr && (
-              <p style={{ fontSize: 12, color: '#2E7D32', textAlign: 'right', padding: '8px 0 4px' }}>= {eveningWater} ml 섭취</p>
-            )}
-          </>
-        )}
-        {activeTab === '정수기' && (
-          <>
-            <Field label="넣은 물" unit="ml" value={form.purifier_water_given} onChange={set('purifier_water_given')} />
-            <Field label="남은 물" unit="ml" value={form.purifier_water_left} onChange={set('purifier_water_left')} error={purifierErr} />
-            {purifierWater && !purifierErr && (
-              <p style={{ fontSize: 12, color: '#2E7D32', textAlign: 'right', padding: '8px 0 4px' }}>= {purifierWater} ml 섭취</p>
-            )}
-          </>
-        )}
-
-        {/* 메모는 항상 표시 */}
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #F2F2F7' }}>
-          <p style={{ fontSize: 11, fontWeight: 600, color: '#8E8E93', marginBottom: 6 }}>메모</p>
-          <textarea
-            value={form.memo} onChange={(e) => setForm((f) => ({ ...f, memo: e.target.value }))}
-            placeholder="특이사항을 입력해 주세요" rows={2}
-            style={{ width: '100%', border: 'none', background: 'none', fontSize: 14, color: '#1C1C1E', fontFamily: 'Pretendard, sans-serif', outline: 'none', resize: 'none', boxSizing: 'border-box' }}
-          />
+          {deleteConfirm ? (
+        <div style={{ marginTop: 8, background: '#FFEBEE', borderRadius: 14, border: '1px solid #FFCDD2', padding: '12px 16px' }}>
+          <p style={{ fontSize: 13, color: '#C62828', fontWeight: 600, marginBottom: 8 }}>정말 삭제할까요?</p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => setDeleteConfirm(false)}
+              style={{ flex: 1, padding: '10px 0', background: '#fff', border: '1px solid #E5E5EA', borderRadius: 10, fontSize: 14, color: '#8E8E93', cursor: 'pointer', fontFamily: 'Pretendard, sans-serif' }}
+            >
+              취소
+            </button>
+            <button
+              onClick={handleDelete}
+              style={{ flex: 1, padding: '10px 0', background: '#C62828', border: 'none', borderRadius: 10, fontSize: 14, color: '#fff', fontWeight: 600, cursor: 'pointer', fontFamily: 'Pretendard, sans-serif' }}
+            >
+              삭제
+            </button>
+          </div>
         </div>
-      </div>
-
-      {error && (
-        <div style={{ marginBottom: 12, padding: '12px 14px', background: '#FFEBEE', borderRadius: 10, border: '1px solid #FFCDD2' }}>
-          <p style={{ fontSize: 13, color: '#C62828' }}>{error}</p>
-        </div>
+      ) : (
+        <button
+          onClick={() => setDeleteConfirm(true)}
+          style={{ width: '100%', marginTop: 8, padding: '12px 0', background: 'none', color: '#AEAEB2', border: '1px solid #F2F2F7', borderRadius: 14, fontSize: 14, cursor: 'pointer', fontFamily: 'Pretendard, sans-serif' }}
+        >
+          이 날 기록 삭제
+        </button>
       )}
-
-      <button
-        onClick={handleSave} disabled={saving}
-        style={{ width: '100%', padding: '15px 0', background: saving ? '#A5D6A7' : '#2E7D32', color: '#fff', border: 'none', borderRadius: 14, fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'Pretendard, sans-serif', transition: 'background 0.2s' }}
-      >
-        {saving ? '저장 중...' : saved ? '저장됐어요 ✓' : '저장하기'}
-      </button>
-
-      <button
-        onClick={handleDelete}
-        style={{ width: '100%', marginTop: 8, padding: '12px 0', background: 'none', color: '#AEAEB2', border: '1px solid #F2F2F7', borderRadius: 14, fontSize: 14, cursor: 'pointer', fontFamily: 'Pretendard, sans-serif' }}
-      >
-        이 날 기록 삭제
-      </button>
+        </>
+      )}
     </div>
   )
 }
