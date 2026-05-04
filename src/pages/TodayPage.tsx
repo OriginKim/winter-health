@@ -197,11 +197,8 @@ export default function TodayPage({ session }: Props) {
   return (
     <div ref={topRef}>
       {/* 날짜 카드 */}
-      <div style={{ marginBottom: 16 }}>
-        <div
-          onClick={() => dateInputRef.current?.showPicker?.()}
-          style={{ background: '#fff', borderRadius: 14, border: '1px solid #F2F2F7', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
-        >
+      <div style={{ marginBottom: 16, position: 'relative' }}>
+        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #F2F2F7', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <p style={{ fontSize: 11, color: '#8E8E93', fontWeight: 600, marginBottom: 2 }}>
               {isToday ? '오늘' : '날짜'}
@@ -213,10 +210,14 @@ export default function TodayPage({ session }: Props) {
           <span style={{ fontSize: 13, color: '#AEAEB2' }}>변경 ›</span>
         </div>
         <input
-          ref={dateInputRef}
-          type="date" value={date}
+          type="date"
+          value={date}
           onChange={(e) => setDate(e.target.value)}
-          style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 0, height: 0 }}
+          style={{
+            position: 'absolute', top: 0, left: 0,
+            width: '100%', height: '100%',
+            opacity: 0, cursor: 'pointer',
+          }}
         />
         {recordedBy && (
           <p style={{ fontSize: 12, color: '#8E8E93', marginTop: 6, paddingLeft: 4 }}>
