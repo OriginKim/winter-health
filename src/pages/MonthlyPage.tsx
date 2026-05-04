@@ -51,8 +51,8 @@ export default function MonthlyPage() {
 
   const chartData = records.map((r) => ({
     date: r.date.slice(8) + '일',
-    몸무게: r.weight ?? null,
-    음수량: calcWater(r) || null,
+    몸무게: r.weight ?? undefined,
+    음수량: calcWater(r) || undefined,
   }))
 
   const dayLabels = ['일', '월', '화', '수', '목', '금', '토']

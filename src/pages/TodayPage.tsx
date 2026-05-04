@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import type { HealthRecord } from '../types'
 
 interface Props { session: Session }
 
