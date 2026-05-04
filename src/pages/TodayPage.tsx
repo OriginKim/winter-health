@@ -59,7 +59,6 @@ export default function TodayPage({ session }: Props) {
   const [recordedBy, setRecordedBy] = useState('')
   const [loading, setLoading] = useState(false)
   const topRef = useRef<HTMLDivElement>(null)
-  const dateInputRef = useRef<HTMLInputElement>(null)
 
   const [form, setForm] = useState({
     weight: '', morning_food: '', morning_water_given: '', morning_water_left: '',
