@@ -9,19 +9,29 @@ const localToday = () => {
   return new Date(d.getTime() - offset).toISOString().slice(0, 10)
 }
 
+const getLastDay = (month: string) => {
+  const [year, mon] = month.split('-').map(Number)
+  return new Date(year, mon, 0).getDate()
+}
+
 export default function MonthlyPage() {
   const [records, setRecords] = useState<HealthRecord[]>([])
-  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7))
+  const [month, setMonth] = useState(() => {
+    const d = new Date()
+    const offset = d.getTimezoneOffset() * 60000
+    return new Date(d.getTime() - offset).toISOString().slice(0, 7)
+  })
   const [selected, setSelected] = useState<HealthRecord | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
+      const lastDay = getLastDay(month)
       const { data } = await supabase
         .from('health_records').select('*')
         .gte('date', `${month}-01`)
-        .lte('date', `${month}-31`)
+        .lte('date', `${month}-${String(lastDay).padStart(2, '0')}`)
         .order('date', { ascending: true })
       setRecords(data ?? [])
       setSelected(null)
@@ -126,7 +136,6 @@ export default function MonthlyPage() {
               })}
             </div>
 
-            {/* 달력 범례 */}
             <div style={{ display: 'flex', gap: 12, marginTop: 12, paddingTop: 12, borderTop: '1px solid #F2F2F7' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#2E7D32' }} />
